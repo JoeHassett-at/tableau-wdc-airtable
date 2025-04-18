@@ -16,95 +16,97 @@
   <button id="submitButton">Connect to Airtable</button>
 
   <script>
-    (function() {
-      var myConnector = tableau.makeConnector();
-
-      // Define your tables to pull
-      const airtableTables = [
-        { id: "Projects", fields: ["Name", "Status"] },
-        { id: "Tasks", fields: ["Description", "Due Date"] },
-        { id: "Clients", fields: ["Name", "Email"] },
-        // Add your other tables here (total 13)
-      ];
-
-      myConnector.getSchema = function(schemaCallback) {
-        const tables = airtableTables.map(table => {
-          const columns = [
-            { id: "record_id", dataType: tableau.dataTypeEnum.string },
-            ...table.fields.map(field => ({
-              id: field.replace(/\s+/g, '_').toLowerCase(),
-              dataType: tableau.dataTypeEnum.string // simplify all as string for now
-            }))
-          ];
-
-          return {
-            id: table.id,
-            alias: `${table.id} Table`,
-            columns: columns
-          };
-        });
-
-        schemaCallback(tables);
-      };
-
-      myConnector.getData = async function(table, doneCallback) {
-        const apiKey = tableau.password;
-        const baseId = tableau.connectionData;
-        const tableName = table.tableInfo.id;
-        let offset = '';
-        let url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
-        const rows = [];
-
-        try {
-          do {
-            const fullUrl = offset ? `${url}?offset=${offset}` : url;
-
-            const response = await fetch(fullUrl, {
-              headers: {
-                Authorization: `Bearer ${apiKey}`
-              }
-            });
-
-            const data = await response.json();
-
-            if (data.records) {
-              data.records.forEach(record => {
-                const row = {
-                  record_id: record.id
-                };
-
-                airtableTables.find(t => t.id === tableName).fields.forEach(field => {
-                  row[field.replace(/\s+/g, '_').toLowerCase()] = record.fields[field] || '';
-                });
-
-                rows.push(row);
+    window.onload = function() {
+      (function() {
+        var myConnector = tableau.makeConnector();
+  
+        // Define your tables to pull
+        const airtableTables = [
+          { id: "Projects", fields: ["Name", "Status"] },
+          { id: "Tasks", fields: ["Description", "Due Date"] },
+          { id: "Clients", fields: ["Name", "Email"] },
+          // Add your other tables here (total 13)
+        ];
+  
+        myConnector.getSchema = function(schemaCallback) {
+          const tables = airtableTables.map(table => {
+            const columns = [
+              { id: "record_id", dataType: tableau.dataTypeEnum.string },
+              ...table.fields.map(field => ({
+                id: field.replace(/\s+/g, '_').toLowerCase(),
+                dataType: tableau.dataTypeEnum.string // simplify all as string for now
+              }))
+            ];
+  
+            return {
+              id: table.id,
+              alias: `${table.id} Table`,
+              columns: columns
+            };
+          });
+  
+          schemaCallback(tables);
+        };
+  
+        myConnector.getData = async function(table, doneCallback) {
+          const apiKey = tableau.password;
+          const baseId = tableau.connectionData;
+          const tableName = table.tableInfo.id;
+          let offset = '';
+          let url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
+          const rows = [];
+  
+          try {
+            do {
+              const fullUrl = offset ? `${url}?offset=${offset}` : url;
+  
+              const response = await fetch(fullUrl, {
+                headers: {
+                  Authorization: `Bearer ${apiKey}`
+                }
               });
-            }
-
-            offset = data.offset;
-
-          } while (offset);
-
-          table.appendRows(rows);
-          doneCallback();
-
-        } catch (error) {
-          console.error("Error fetching Airtable data:", error);
-        }
-      };
-
-      tableau.registerConnector(myConnector);
-
-      document.getElementById("submitButton").addEventListener("click", function() {
-        const apiKey = document.getElementById("apiKey").value;
-        const baseId = document.getElementById("baseId").value;
-
-        tableau.connectionData = baseId;
-        tableau.password = apiKey;
-        tableau.connectionName = "Airtable Multi-Table Connection";
-        tableau.submit();
-      });
-    })();
+  
+              const data = await response.json();
+  
+              if (data.records) {
+                data.records.forEach(record => {
+                  const row = {
+                    record_id: record.id
+                  };
+  
+                  airtableTables.find(t => t.id === tableName).fields.forEach(field => {
+                    row[field.replace(/\s+/g, '_').toLowerCase()] = record.fields[field] || '';
+                  });
+  
+                  rows.push(row);
+                });
+              }
+  
+              offset = data.offset;
+  
+            } while (offset);
+  
+            table.appendRows(rows);
+            doneCallback();
+  
+          } catch (error) {
+            console.error("Error fetching Airtable data:", error);
+          }
+        };
+  
+        tableau.registerConnector(myConnector);
+  
+        document.getElementById("submitButton").addEventListener("click", function() {
+          const apiKey = document.getElementById("apiKey").value;
+          const baseId = document.getElementById("baseId").value;
+  
+          tableau.connectionData = baseId;
+          tableau.password = apiKey;
+          tableau.connectionName = "Airtable Multi-Table Connection";
+          tableau.submit();
+        });
+      })();
+    };
   </script>
 </body>
 </html>
