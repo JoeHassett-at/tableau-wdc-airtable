@@ -1,107 +1,78 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Airtable to Tableau WDC</title>
-
-  <!-- Load Tableau WDC library FIRST -->
-  <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.latest.js"></script>
+  <title>Airtable to Tableau WDC (v3)</title>
+  <script src="tableauwdc-3.0.js"></script>
 </head>
-
 <body>
-  <h1>Airtable Multi-Table Connector</h1>
+  <h1>Airtable Multi-Table Connector (v3)</h1>
 
   <label>API Key:</label>
   <input type="text" id="apiKey" placeholder="Your Airtable Personal Access Token"><br><br>
 
   <label>Base ID:</label>
-  <input type="text" id="baseId" placeholder="appXXXXXXXXXX"><br><br>
+  <input type="text" id="baseId" placeholder="appXXXXXXXXX"><br><br>
 
   <button id="submitButton">Connect to Airtable</button>
 
-  <!-- NOW after tableau.js is loaded, run your connector code -->
   <script>
-    (function() {
-      var myConnector = tableau.makeConnector();
-
-      const airtableTables = [
-        { id: "Projects", fields: ["Name", "Status"] },
-        { id: "Tasks", fields: ["Description", "Due Date"] },
-        { id: "Clients", fields: ["Name", "Email"] },
-        // Add your other tables here
-      ];
-
-      myConnector.getSchema = function(schemaCallback) {
-        const tables = airtableTables.map(table => {
-          const columns = [
-            { id: "record_id", dataType: tableau.dataTypeEnum.string },
-            ...table.fields.map(field => ({
-              id: field.replace(/\s+/g, '_').toLowerCase(),
-              dataType: tableau.dataTypeEnum.string
-            }))
-          ];
-          return {
-            id: table.id,
-            alias: `${table.id} Table`,
-            columns: columns
-          };
-        });
-
+    const myConnector = {
+      getSchema: function(schemaCallback) {
+        const tables = [
+          {
+            id: "Projects",
+            alias: "Projects Table",
+            columns: [
+              { id: "record_id", dataType: tableau.dataTypeEnum.string },
+              { id: "name", dataType: tableau.dataTypeEnum.string },
+              { id: "status", dataType: tableau.dataTypeEnum.string }
+            ]
+          }
+        ];
         schemaCallback(tables);
-      };
+      },
 
-      myConnector.getData = async function(table, doneCallback) {
+      getData: async function(table, doneCallback) {
         const apiKey = tableau.password;
         const baseId = tableau.connectionData;
         const tableName = table.tableInfo.id;
-        let offset = '';
-        let url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
+        const url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
         const rows = [];
 
         try {
-          do {
-            const fullUrl = offset ? `${url}?offset=${offset}` : url;
-            const response = await fetch(fullUrl, {
-              headers: {
-                Authorization: `Bearer ${apiKey}`
-              }
-            });
-            const data = await response.json();
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${apiKey}` }
+          });
+          const data = await response.json();
 
-            if (data.records) {
-              data.records.forEach(record => {
-                const row = { record_id: record.id };
-                airtableTables.find(t => t.id === tableName).fields.forEach(field => {
-                  row[field.replace(/\s+/g, '_').toLowerCase()] = record.fields[field] || '';
-                });
-                rows.push(row);
+          if (data.records) {
+            data.records.forEach(record => {
+              rows.push({
+                record_id: record.id,
+                name: record.fields.Name || '',
+                status: record.fields.Status || ''
               });
-            }
-
-            offset = data.offset;
-
-          } while (offset);
+            });
+          }
 
           table.appendRows(rows);
           doneCallback();
-        } catch (error) {
-          console.error("Error fetching Airtable data:", error);
+        } catch (err) {
+          console.error("Error fetching Airtable data:", err);
         }
-      };
+      }
+    };
 
-      tableau.registerConnector(myConnector);
+    tableau.registerConnector(myConnector);
 
-      document.getElementById("submitButton").addEventListener("click", function() {
-        const apiKey = document.getElementById("apiKey").value;
-        const baseId = document.getElementById("baseId").value;
-
-        tableau.connectionData = baseId;
-        tableau.password = apiKey;
-        tableau.connectionName = "Airtable Multi-Table Connection";
-        tableau.submit();
-      });
-
-    })();
+    document.getElementById("submitButton").addEventListener("click", function() {
+      tableau.connectionName = "Airtable Multi-Table WDC (v3)";
+      tableau.connectionData = document.getElementById("baseId").value;
+      tableau.password = document.getElementById("apiKey").value;
+      tableau.submit();
+    });
   </script>
 </body>
 </html>
+
 
